@@ -1,5 +1,7 @@
 /**
- * WebSocket»á»°Àà, MyWebSocketSession.cpp
+#include <algorithm>
+#include <cctype>
+ * WebSocketä¼šè¯ç±», MyWebSocketSession.cpp
  * zhangyl 2017.03.09
  */
 #include "MyWebSocketSession.h"
@@ -20,12 +22,12 @@
 
 #include "WebSocketHandshake.h"
 
-//client¶Ë×î´óÔÊĞíhttp°ü50M
+//clientç«¯æœ€å¤§å…è®¸httpåŒ…50M
 #define MAX_WEBSOCKET_CLIENT_PACKAGE_LENGTH        50 * 1024 * 1024
-//×îĞ¡websocket°üÍ·´óĞ¡
+//æœ€å°websocketåŒ…å¤´å¤§å°
 #define MIN_WEBSOCKET_PACKAGE_HEADER_LENGTH        6
 
-//·şÎñÆ÷¶Ë·Ö°üµÄ´óĞ¡£¬10M
+//æœåŠ¡å™¨ç«¯åˆ†åŒ…çš„å¤§å°ï¼Œ10M
 #define MAX_WEBSOCKET_SERVER_PACKAGE_LENGTH 10 * 1024 * 1024
 
 MyWebSocketSession::MyWebSocketSession(std::shared_ptr<TcpConnection>& conn) : m_bUpdateToWebSocket(false), m_tmpConn(conn), m_bClientCompressed(false)
@@ -59,7 +61,7 @@ void MyWebSocketSession::onRead(const std::shared_ptr<TcpConnection>& conn, Buff
             return;
         }
 
-        //WEBSOCKET RFC ÎÄµµ£ºhttps://www.rfc-editor.org/rfc/rfc6455.txt
+        //WEBSOCKET RFC æ–‡æ¡£ï¼šhttps://www.rfc-editor.org/rfc/rfc6455.txt
 
 
         /*
@@ -84,7 +86,7 @@ void MyWebSocketSession::onRead(const std::shared_ptr<TcpConnection>& conn, Buff
 
          */
 
-         //»¹Î´½øĞĞÎÕÊÖ£¬µ±ÎÕÊÖĞ­ÒéÊı¾İ´¦Àí
+         //è¿˜æœªè¿›è¡Œæ¡æ‰‹ï¼Œå½“æ¡æ‰‹åè®®æ•°æ®å¤„ç†
         if (!m_bUpdateToWebSocket)
         {
             const char* pos = pBuffer->findString("\r\n\r\n");
@@ -92,10 +94,10 @@ void MyWebSocketSession::onRead(const std::shared_ptr<TcpConnection>& conn, Buff
 
             if (!foundEngTag)
             {
-                //°ü»¹Ã»ÊÕÍê
+                //åŒ…è¿˜æ²¡æ”¶å®Œ
                 if (pBuffer->readableBytes() < MAX_WEBSOCKET_CLIENT_PACKAGE_LENGTH)
                     return;
-                //·Ç·¨Êı¾İ°ü
+                //éæ³•æ•°æ®åŒ…
                 else
                 {
                     conn->forceClose();
@@ -103,7 +105,7 @@ void MyWebSocketSession::onRead(const std::shared_ptr<TcpConnection>& conn, Buff
                 }
             }
 
-            //4ÊÇ\r\n\r\nµÄ³¤¶È
+            //4æ˜¯\r\n\r\nçš„é•¿åº¦
             size_t length = pos - (pBuffer->peek()) + 4;
             std::string currentData(pBuffer->peek(), length);
             pBuffer->retrieve(length);
@@ -116,7 +118,7 @@ void MyWebSocketSession::onRead(const std::shared_ptr<TcpConnection>& conn, Buff
 
             LOGI("websocket message: %s", currentData.c_str());
         }
-        //Õı³£½â°ü
+        //æ­£å¸¸è§£åŒ…
         else
         {
             if (readableBytesCount < MIN_WEBSOCKET_PACKAGE_HEADER_LENGTH)
@@ -125,12 +127,12 @@ void MyWebSocketSession::onRead(const std::shared_ptr<TcpConnection>& conn, Buff
             if (!decodePackage(pBuffer, conn))
                 conn->forceClose();
                 
-            //²»¹Ü°üÊÇ·ñ´¦Àí³ö´í»¹ÊÇÒòÎª°üÊı¾İ²»×ã¶¼Ó¦¸ÃÍË³öÑ­»·
+            //ä¸ç®¡åŒ…æ˜¯å¦å¤„ç†å‡ºé”™è¿˜æ˜¯å› ä¸ºåŒ…æ•°æ®ä¸è¶³éƒ½åº”è¯¥é€€å‡ºå¾ªç¯
             return;
         }
     }
     
-    //´¦ÀíÕı³£Êı¾İ½»Á÷    
+    //å¤„ç†æ­£å¸¸æ•°æ®äº¤æµ    
 }
 
 bool MyWebSocketSession::decodePackage(Buffer* pBuffer, const std::shared_ptr<TcpConnection>& conn)
@@ -139,22 +141,22 @@ bool MyWebSocketSession::decodePackage(Buffer* pBuffer, const std::shared_ptr<Tc
     
     const int32_t TWO_FLAG_BYTES = 2;
 
-    //×î´ó°üÍ·³¤¶È
+    //æœ€å¤§åŒ…å¤´é•¿åº¦
     const int32_t MAX_HEADER_LENGTH = 14;
     char pBytes[MAX_HEADER_LENGTH] = {0};
-    //ÒÑ¾­ÊÕµ½µÄÊı¾İ´óÓÚ×î´ó°ü³¤Ê±½ö¿½±´¿ÉÄÜÊÇ°üÍ·µÄ×î´ó²¿·Ö
+    //å·²ç»æ”¶åˆ°çš„æ•°æ®å¤§äºæœ€å¤§åŒ…é•¿æ—¶ä»…æ‹·è´å¯èƒ½æ˜¯åŒ…å¤´çš„æœ€å¤§éƒ¨åˆ†
     if (readableBytesCount > MAX_HEADER_LENGTH)
         memcpy(pBytes, pBuffer->peek(), MAX_HEADER_LENGTH * sizeof(char));
     else
         memcpy(pBytes, pBuffer->peek(), readableBytesCount * sizeof(char));
 
     bool FIN = (pBytes[0] & 0x80);
-    //TODO: ÕâÀï¾Í²»Ğ£ÑéÁË£¬ÒòÎª·şÎñÆ÷ºÍÎ´ÖªµÄ¿Í»§¶ËÖ®¼äÎŞÔ¼¶¨
-    //bool RSV1, RSV2, RSV3;
-    //È¡µÚÒ»¸ö×Ö½ÚµÄµÍ4Î»»ñÈ¡Êı¾İÀàĞÍ
-    int32_t opcode = (int32_t)(pBytes[0] & 0xF);
-
-    //if (!FIN && opcode != MyOpCode::CONTINUATION_FRAME)
+    if (!mask)
+    {
+        LOGE("invalid mask flag, client: %s", conn->peerAddress().toIpPort().c_str());
+        return false;
+    }
+    if (payloadLength < 0 || payloadLength > 127)
     //{
     //    LOGE("FIN did not match opcode, client: %s", conn->peerAddress().toIpPort().c_str());
     //    return false;
@@ -166,7 +168,7 @@ bool MyWebSocketSession::decodePackage(Buffer* pBuffer, const std::shared_ptr<Tc
     //    return false;
     //}
 
-    //È¡µÚ¶ş¸ö×Ö½ÚµÄ×î¸ßÎ»£¬ÀíÂÛÉÏËµ¿Í»§¶Ë·¢¸ø·şÎñÆ÷µÄÕâ¸ö×Ö¶Î±ØĞëÉèÖÃÎª1
+    //å–ç¬¬äºŒä¸ªå­—èŠ‚çš„æœ€é«˜ä½ï¼Œç†è®ºä¸Šè¯´å®¢æˆ·ç«¯å‘ç»™æœåŠ¡å™¨çš„è¿™ä¸ªå­—æ®µå¿…é¡»è®¾ç½®ä¸º1
     bool mask = ((pBytes[1] & 0x80));
     //if (!mask)
     //{
@@ -176,11 +178,11 @@ bool MyWebSocketSession::decodePackage(Buffer* pBuffer, const std::shared_ptr<Tc
 
     int32_t headerSize = 0;
     int64_t bodyLength = 0;
-    //°´mask±êÖ¾¼ÓÉÏËÄ¸ö×Ö½ÚµÄmasking-key³¤¶È
+    //æŒ‰maskæ ‡å¿—åŠ ä¸Šå››ä¸ªå­—èŠ‚çš„masking-keyé•¿åº¦
     if (mask)
         headerSize += 4;
 
-    //È¡µÚ¶ş¸ö×Ö½ÚµÄµÍÆßÎ»
+    //å–ç¬¬äºŒä¸ªå­—èŠ‚çš„ä½ä¸ƒä½
     int32_t payloadLength = (int32_t)(pBytes[1] & 0x7F);
     if (payloadLength <= 0 && payloadLength > 127)
     {
@@ -205,7 +207,7 @@ bool MyWebSocketSession::decodePackage(Buffer* pBuffer, const std::shared_ptr<Tc
         memcpy(&tmp, &pBytes[2], 2);
         int32_t extendedPayloadLength = ::ntohs(tmp);
         bodyLength = extendedPayloadLength;
-        //°üÌå³¤¶È²»·ûºÏÒªÇó
+        //åŒ…ä½“é•¿åº¦ä¸ç¬¦åˆè¦æ±‚
         if (bodyLength < 126 || bodyLength > UINT16_MAX)
         {
             LOGE("illegal extendedPayloadLength, extendedPayloadLength: %d, client: %s", bodyLength, conn->peerAddress().toIpPort().c_str());
@@ -217,7 +219,7 @@ bool MyWebSocketSession::decodePackage(Buffer* pBuffer, const std::shared_ptr<Tc
         headerSize += TWO_FLAG_BYTES;
         headerSize += sizeof(uint64_t);
         
-        //°ü³¤¶È²»¹»
+        //åŒ…é•¿åº¦ä¸å¤Ÿ
         if ((int32_t)readableBytesCount < headerSize)
             return true;
 
@@ -225,7 +227,7 @@ bool MyWebSocketSession::decodePackage(Buffer* pBuffer, const std::shared_ptr<Tc
         memcpy(&tmp, &pBytes[2], 8);
         int64_t extendedPayloadLength = ::ntohll(tmp);
         bodyLength = extendedPayloadLength;
-        //°üÌå³¤¶È²»·ûºÏÒªÇó
+        //åŒ…ä½“é•¿åº¦ä¸ç¬¦åˆè¦æ±‚
         if (bodyLength <= UINT16_MAX)
         {
             LOGE("illegal extendedPayloadLength, extendedPayloadLength: %lld, client: %s", bodyLength, conn->peerAddress().toIpPort().c_str());
@@ -236,25 +238,25 @@ bool MyWebSocketSession::decodePackage(Buffer* pBuffer, const std::shared_ptr<Tc
     if ((int32_t)readableBytesCount < headerSize + bodyLength)
         return true;
 
-    //È¡³ö°üÍ·
+    //å–å‡ºåŒ…å¤´
     pBuffer->retrieve(headerSize);
     std::string payloadData(pBuffer->peek(), bodyLength);
-    //È¡³ö°üÌå
+    //å–å‡ºåŒ…ä½“
     pBuffer->retrieve(bodyLength);
 
     if (mask)
     {
         char maskingKey[4] = { 0 };
-        //headerSize - 4¼´masking-keyµÄÎ»ÖÃ
+        //headerSize - 4å³masking-keyçš„ä½ç½®
         memcpy(maskingKey, pBytes + headerSize - 4, 4);
         unmaskData(payloadData, maskingKey);
     }
     
     if (FIN)
     {
-        //×îºóÒ»¸ö·ÖÆ¬£¬ÓëÖ®Ç°µÄºÏ²¢£¨Èç¹ûÓĞµÄ»°£©ºó´¦Àí
+        //æœ€åä¸€ä¸ªåˆ†ç‰‡ï¼Œä¸ä¹‹å‰çš„åˆå¹¶ï¼ˆå¦‚æœæœ‰çš„è¯ï¼‰åå¤„ç†
         m_strParsedData.append(payloadData);
-        //°ü´¦Àí³ö´í
+        //åŒ…å¤„ç†å‡ºé”™
         if (!processPackage(m_strParsedData, (MyOpCode)opcode, conn))
             return false;
 
@@ -262,7 +264,7 @@ bool MyWebSocketSession::decodePackage(Buffer* pBuffer, const std::shared_ptr<Tc
     }
     else
     {
-        //·Ç×îºóÒ»¸ö·ÖÆ¬£¬ÏÈ»º´æÆğÀ´
+        //éæœ€åä¸€ä¸ªåˆ†ç‰‡ï¼Œå…ˆç¼“å­˜èµ·æ¥
         m_strParsedData.append(payloadData);
     } 
 
@@ -308,15 +310,29 @@ bool MyWebSocketSession::handleHandshake(const std::string& data, const std::sha
 {
     std::vector<std::string> vecHttpHeaders;
     StringUtil::Split(data, vecHttpHeaders, "\r\n");
-    //ÖÁÉÙÓĞ3ĞĞ
-    if (vecHttpHeaders.size() < 3)
+            size_t colonPos = vecHttpHeaders[i].find(':');
+            if (colonPos == std::string::npos)
+            std::string key = vecHttpHeaders[i].substr(0, colonPos);
+            std::string value = vecHttpHeaders[i].substr(colonPos + 1);
+            StringUtil::trim(value);
+            m_mapHttpHeaders[key] = value;
+    auto toLower = [](std::string value)
+    {
+        std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+        return value;
+    };
+
+    if (target == m_mapHttpHeaders.end())
         return false;
 
-    std::vector<std::string> v;
-    size_t vecLength = vecHttpHeaders.size();
-    for (size_t i = 0; i < vecLength; ++i)
-    {
-        //µÚÒ»ĞĞ»ñµÃ²ÎÊıÃû³ÆºÍĞ­Òé°æ±¾ºÅ
+    std::string connectionValue = toLower(target->second);
+    if (connectionValue.find("upgrade") == std::string::npos)
+    if (target == m_mapHttpHeaders.end() || toLower(target->second) != "websocket")
+    target = m_mapHttpHeaders.find("Sec-WebSocket-Version");
+    if (target == m_mapHttpHeaders.end() || target->second != "13")
+        return false;
+
+        //ç¬¬ä¸€è¡Œè·å¾—å‚æ•°åç§°å’Œåè®®ç‰ˆæœ¬å·
         if (i == 0)
         {
             if (!parseHttpPath(vecHttpHeaders[i]))
@@ -324,7 +340,7 @@ bool MyWebSocketSession::handleHandshake(const std::string& data, const std::sha
         }
         else
         {
-            //½âÎöÍ·±êÖ¾
+            //è§£æå¤´æ ‡å¿—
             v.clear();
             StringUtil::Cut(vecHttpHeaders[i], v, ":");
             if (v.size() < 2)
@@ -335,19 +351,19 @@ bool MyWebSocketSession::handleHandshake(const std::string& data, const std::sha
         }
     }
 
-    /* TODO£ºÕë¶Ô¿Í»§¶ËµÄÒªÇó 
-        ÎÕÊÖ±ØĞëÊÇÒ»¸öÓĞĞ§µÄ HTTP ÇëÇó
-        ÇëÇóµÄ·½·¨±ØĞëÎª GET,ÇÒ HTTP °æ±¾±ØĞëÊÇ 1.1
-        ÇëÇóµÄ REQUEST-URI ±ØĞë·ûºÏÎÄµµ¹æ¶¨µÄÒªÇó(ÏêÇé²é¿´ Page 13)
-        ÇëÇó±ØĞë°üº¬ Host Í·
-        ÇëÇó±ØĞë°üº¬ Upgrade: websocket Í·,Öµ±ØĞëÎª websocket
-        ÇëÇó±ØĞë°üº¬ Connection: Upgrade Í·,Öµ±ØĞëÎª Upgrade
-        ÇëÇó±ØĞë°üº¬ Sec-WebSocket-Key Í·
-        ÇëÇó±ØĞë°üº¬ Sec-WebSocket-Version: 13 Í·,Öµ±ØĞëÎª 13
-        ÇëÇó±ØĞë°üº¬ Origin Í·
-        ÇëÇó¿ÉÄÜ°üº¬ Sec-WebSocket-Protocol Í·,¹æ¶¨×ÓĞ­Òé
-        ÇëÇó¿ÉÄÜ°üº¬ Sec-WebSocket-Extensions ,¹æ¶¨Ğ­ÒéÀ©Õ¹
-        ÇëÇó¿ÉÄÜ°üº¬ÆäËû×Ö¶Î,Èç cookie µÈ
+    /* TODOï¼šé’ˆå¯¹å®¢æˆ·ç«¯çš„è¦æ±‚ 
+        æ¡æ‰‹å¿…é¡»æ˜¯ä¸€ä¸ªæœ‰æ•ˆçš„ HTTP è¯·æ±‚
+        è¯·æ±‚çš„æ–¹æ³•å¿…é¡»ä¸º GET,ä¸” HTTP ç‰ˆæœ¬å¿…é¡»æ˜¯ 1.1
+        è¯·æ±‚çš„ REQUEST-URI å¿…é¡»ç¬¦åˆæ–‡æ¡£è§„å®šçš„è¦æ±‚(è¯¦æƒ…æŸ¥çœ‹ Page 13)
+        è¯·æ±‚å¿…é¡»åŒ…å« Host å¤´
+        è¯·æ±‚å¿…é¡»åŒ…å« Upgrade: websocket å¤´,å€¼å¿…é¡»ä¸º websocket
+        è¯·æ±‚å¿…é¡»åŒ…å« Connection: Upgrade å¤´,å€¼å¿…é¡»ä¸º Upgrade
+        è¯·æ±‚å¿…é¡»åŒ…å« Sec-WebSocket-Key å¤´
+        è¯·æ±‚å¿…é¡»åŒ…å« Sec-WebSocket-Version: 13 å¤´,å€¼å¿…é¡»ä¸º 13
+        è¯·æ±‚å¿…é¡»åŒ…å« Origin å¤´
+        è¯·æ±‚å¯èƒ½åŒ…å« Sec-WebSocket-Protocol å¤´,è§„å®šå­åè®®
+        è¯·æ±‚å¯èƒ½åŒ…å« Sec-WebSocket-Extensions ,è§„å®šåè®®æ‰©å±•
+        è¯·æ±‚å¯èƒ½åŒ…å«å…¶ä»–å­—æ®µ,å¦‚ cookie ç­‰
      */
 
     auto target = m_mapHttpHeaders.find("Connection");
@@ -366,7 +382,7 @@ bool MyWebSocketSession::handleHandshake(const std::string& data, const std::sha
     if (target == m_mapHttpHeaders.end() || target->second.empty())
         return false;
 
-    //TODO: ºóÃæ¸Ä³É²»Çø·Ö´óĞ¡Ğ´µÄ
+    //TODO: åé¢æ”¹æˆä¸åŒºåˆ†å¤§å°å†™çš„
     target = m_mapHttpHeaders.find("User-Agent");
     if (target != m_mapHttpHeaders.end())
     {
@@ -401,7 +417,7 @@ bool MyWebSocketSession::handleHandshake(const std::string& data, const std::sha
     
     m_bUpdateToWebSocket = true;
 
-    //Êµ¼Êµ÷ÓÃ×ÓÀà¸ÄĞ´µÄÀà
+    //å®é™…è°ƒç”¨å­ç±»æ”¹å†™çš„ç±»
     onConnect();
 
     return true;
@@ -414,13 +430,13 @@ bool MyWebSocketSession::parseHttpPath(const std::string& str)
     if (vecTags.size() != 3)
         return false;
 
-    //TODO: Ó¦¸Ã²»Çø·Ö´óĞ¡Ğ´µÄ±È½Ï
+               "Sec-WebSocket-Accept: ";
     if (vecTags[0] != "GET")
         return false;
 
     std::vector<std::string> vecPathAndParams;
     StringUtil::Split(vecTags[1], vecPathAndParams, "?");
-    //ÖÁÉÙÓĞÒ»¸öÂ·¾¶²ÎÊı
+    //è‡³å°‘æœ‰ä¸€ä¸ªè·¯å¾„å‚æ•°
     if (vecPathAndParams.empty())
         return false;
 
@@ -428,7 +444,7 @@ bool MyWebSocketSession::parseHttpPath(const std::string& str)
     if (vecPathAndParams.size() >= 2)
         m_strParams = vecPathAndParams[1];
 
-    //WebSocketĞ­Òé°æ±¾ºÅ±ØĞë1.1
+    //WebSocketåè®®ç‰ˆæœ¬å·å¿…é¡»1.1
     if (vecTags[2] != "HTTP/1.1")
         return false;
 
@@ -465,15 +481,15 @@ void MyWebSocketSession::makeUpgradeResponse(const char* secWebSocketAccept, std
 void MyWebSocketSession::unmaskData(std::string& src, const char* maskingKey)
 {
     /*
-     *  ÑÚÂë¼ü£¨Masking-key£©ÊÇÓÉ¿Í»§¶ËÌôÑ¡³öÀ´µÄ 32 Î»µÄËæ»úÊı¡£ÑÚÂë²Ù×÷²»»áÓ°ÏìÊı¾İÔØºÉµÄ³¤¶È¡£ÑÚÂë¡¢·´ÑÚÂë²Ù×÷¶¼²ÉÓÃÈçÏÂËã·¨£º
+     *  æ©ç é”®ï¼ˆMasking-keyï¼‰æ˜¯ç”±å®¢æˆ·ç«¯æŒ‘é€‰å‡ºæ¥çš„ 32 ä½çš„éšæœºæ•°ã€‚æ©ç æ“ä½œä¸ä¼šå½±å“æ•°æ®è½½è·çš„é•¿åº¦ã€‚æ©ç ã€åæ©ç æ“ä½œéƒ½é‡‡ç”¨å¦‚ä¸‹ç®—æ³•ï¼š
 
-        Ê×ÏÈ£¬¼ÙÉè£º
+        é¦–å…ˆï¼Œå‡è®¾ï¼š
 
-        original-octet-i£ºÎªÔ­Ê¼Êı¾İµÄµÚ i ×Ö½Ú¡£
-        transformed-octet-i£ºÎª×ª»»ºóµÄÊı¾İµÄµÚ i ×Ö½Ú¡£
-        j£ºÎªi mod 4µÄ½á¹û¡£
-        masking-key-octet-j£ºÎª mask key µÚ j ×Ö½Ú¡£
-        Ëã·¨ÃèÊöÎª£º original-octet-i Óë masking-key-octet-j Òì»òºó£¬µÃµ½ transformed-octet-i¡£
+        original-octet-iï¼šä¸ºåŸå§‹æ•°æ®çš„ç¬¬ i å­—èŠ‚ã€‚
+        transformed-octet-iï¼šä¸ºè½¬æ¢åçš„æ•°æ®çš„ç¬¬ i å­—èŠ‚ã€‚
+        jï¼šä¸ºi mod 4çš„ç»“æœã€‚
+        masking-key-octet-jï¼šä¸º mask key ç¬¬ j å­—èŠ‚ã€‚
+        ç®—æ³•æè¿°ä¸ºï¼š original-octet-i ä¸ masking-key-octet-j å¼‚æˆ–åï¼Œå¾—åˆ° transformed-octet-iã€‚
 
         j  = i MOD 4
         transformed-octet-i = original-octet-i XOR masking-key-octet-j
@@ -572,13 +588,13 @@ void MyWebSocketSession::send(const std::string& data, int32_t opcode/* = MyOpCo
     firstTwoBytes[0] |= opcode;
     //}
 
-    //TODO£ºÕâÀïÎªÉ¶ÓĞÕâ¸ö±ê¼Ç£¿
+    //TODOï¼šè¿™é‡Œä¸ºå•¥æœ‰è¿™ä¸ªæ ‡è®°ï¼Ÿ
     const char compressFlag = 0x40;
     if (m_bClientCompressed)
         firstTwoBytes[0] |= compressFlag;
     
     //mask = 0;
-    //Êµ¼Ê·¢ËÍµÄÊı¾İ°ü
+    //å®é™…å‘é€çš„æ•°æ®åŒ…
     std::string actualSendData;
 
     if (dataLength < 126)
@@ -586,7 +602,7 @@ void MyWebSocketSession::send(const std::string& data, int32_t opcode/* = MyOpCo
         firstTwoBytes[1] = dataLength;
         actualSendData.append(firstTwoBytes, 2);
     }
-    else if (dataLength <= UINT16_MAX)  //2×Ö½ÚÎŞ·ûºÅÕûÊı×î´óÊıÖµ£¨65535£©
+    else if (dataLength <= UINT16_MAX)  //2å­—èŠ‚æ— ç¬¦å·æ•´æ•°æœ€å¤§æ•°å€¼ï¼ˆ65535ï¼‰
     {
         firstTwoBytes[1] = 126;
         char extendedPlayloadLength[2] = { 0 };
